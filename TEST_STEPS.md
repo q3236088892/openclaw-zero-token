@@ -133,8 +133,8 @@ gemini-web/gemini-pro
 gemini-web/gemini-ultra
 grok-web/grok-2
 grok-web/grok-1
-z-web/glm-4
-z-web/glm-3
+z-web/glm-4-plus
+z-web/glm-4-think
 manus-web/manus-1
 ```
 
@@ -155,7 +155,7 @@ manus-web/manus-1
 - ⏳ kimi-web
 - ✅ gemini-web
 - ✅ grok-web
-- ⏳ z-web
+- ✅ z-web
 - ⏳ manus-web
 
 ---

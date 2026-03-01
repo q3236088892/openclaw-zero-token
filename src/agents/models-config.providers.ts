@@ -232,8 +232,8 @@ const GROK_WEB_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
-export const Z_WEB_BASE_URL = "https://chat.z.ai";
-export const Z_WEB_DEFAULT_MODEL_ID = "glm-4";
+export const Z_WEB_BASE_URL = "https://chatglm.cn";
+export const Z_WEB_DEFAULT_MODEL_ID = "glm-4-plus";
 const Z_WEB_DEFAULT_CONTEXT_WINDOW = 128000;
 const Z_WEB_DEFAULT_MAX_TOKENS = 4096;
 const Z_WEB_DEFAULT_COST = {
@@ -1103,8 +1103,8 @@ export async function buildZWebProvider(params?: {
     api: "z-web",
     models: [
       {
-        id: "glm-4",
-        name: "GLM-4 (Web)",
+        id: "glm-4-plus",
+        name: "GLM-4 Plus (Web)",
         reasoning: false,
         input: ["text"],
         cost: Z_WEB_DEFAULT_COST,
@@ -1112,9 +1112,9 @@ export async function buildZWebProvider(params?: {
         maxTokens: Z_WEB_DEFAULT_MAX_TOKENS,
       },
       {
-        id: "glm-3-turbo",
-        name: "GLM-3 Turbo (Web)",
-        reasoning: false,
+        id: "glm-4-think",
+        name: "GLM-4 Think (Web)",
+        reasoning: true,
         input: ["text"],
         cost: Z_WEB_DEFAULT_COST,
         contextWindow: Z_WEB_DEFAULT_CONTEXT_WINDOW,

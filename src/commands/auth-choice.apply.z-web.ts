@@ -15,7 +15,7 @@ export async function applyAuthChoiceZWeb(
 
   if (!cookie) {
     const mode = await prompter.select({
-      message: "Z Auth Mode",
+      message: "ChatGLM Auth Mode",
       options: [
         { value: "auto", label: "Automated Login (Recommended)", hint: "Opens browser to capture login automatically" },
         { value: "manual", label: "Manual Paste", hint: "Paste cookies manually" },
@@ -39,8 +39,8 @@ export async function applyAuthChoiceZWeb(
     }
 
     if (!cookie) {
-      await prompter.note(["To use Z Browser, you need cookies from chat.z.ai.", "1. Login to https://chat.z.ai in your browser", "2. Open DevTools (F12) -> Application -> Cookies", "3. Copy all cookies"].join("\n"), "Z Login");
-      cookie = await prompter.text({ message: "Paste cookies", hint: "All cookies from chat.z.ai", placeholder: "...", validate: (value) => (value.trim().length > 0 ? undefined : "Required") });
+      await prompter.note(["To use ChatGLM (智谱清言), you need the chatglm_refresh_token cookie.", "1. Login to https://chatglm.cn in your browser", "2. Open DevTools (F12) -> Application -> Cookies", "3. Find and copy the chatglm_refresh_token value"].join("\n"), "ChatGLM Login");
+      cookie = await prompter.text({ message: "Paste chatglm_refresh_token", hint: "chatglm_refresh_token from chatglm.cn", placeholder: "...", validate: (value) => (value.trim().length > 0 ? undefined : "Required") });
       const authData = JSON.stringify({ cookie, userAgent: "Mozilla/5.0" });
       await setZWebCookie({ cookie: authData }, agentDir);
     }

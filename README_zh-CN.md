@@ -33,7 +33,7 @@ OpenClaw Zero Token 是 [OpenClaw](https://github.com/openclaw/openclaw) 的分�
 | ChatGPT Web | ✅ **已测试** | GPT-4, GPT-4 Turbo |
 | Gemini Web | ✅ **已测试** | Gemini Pro, Gemini Ultra |
 | Grok Web | ✅ **已测试** | Grok 1, Grok 2 |
-| Z Web | ⏳ **未测试** | GLM-4, GLM-3 Turbo |
+| Z Web (智谱清言) | ✅ **已测试** | GLM-4-Plus, GLM-4-Think |
 | Manus Web | ⏳ **未测试** | Manus 1 |
 | Manus API | ✅ **已测试** | Manus 1.6, Manus 1.6 Lite（API key，免费额度） |
 

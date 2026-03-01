@@ -30,11 +30,11 @@ export function createZWebStreamFn(cookieOrJson: string): StreamFn {
         await client.init();
 
         const sessionKey = (context as unknown as { sessionId?: string }).sessionId || "default";
-        let conversationId = conversationMap.get(sessionKey);
+        const conversationId = conversationMap.get(sessionKey);
 
         const messages = context.messages || [];
         const lastUserMessage = [...messages].toReversed().find((m) => m.role === "user");
-        
+
         let prompt = "";
         if (lastUserMessage) {
           if (typeof lastUserMessage.content === "string") {
@@ -48,7 +48,7 @@ export function createZWebStreamFn(cookieOrJson: string): StreamFn {
         }
 
         if (!prompt) {
-          throw new Error("No message found to send to Z API");
+          throw new Error("No message found to send to ChatGLM API");
         }
 
         const cleanPrompt = stripForWebProvider(prompt);
@@ -68,7 +68,7 @@ export function createZWebStreamFn(cookieOrJson: string): StreamFn {
         });
 
         if (!responseStream) {
-          throw new Error("Z API returned empty response body");
+          throw new Error("ChatGLM API returned empty response body");
         }
 
         const reader = responseStream.getReader();
@@ -78,6 +78,7 @@ export function createZWebStreamFn(cookieOrJson: string): StreamFn {
 
         const contentParts: TextContent[] = [];
         let contentIndex = 0;
+        let lastExtractedText = "";
 
         const createPartial = (): AssistantMessage => ({
           role: "assistant",
@@ -97,45 +98,92 @@ export function createZWebStreamFn(cookieOrJson: string): StreamFn {
           timestamp: Date.now(),
         });
 
-        const processLine = (line: string) => {
-          if (!line || !line.startsWith("data:")) {
-            return;
+        // Extract text from ChatGLM response parts
+        // Format: parts[].content[] where content items have {type: "text", text: "..."}
+        // Returns the full text for this chunk (need to calculate delta ourselves)
+        const extractTextFromParts = (parts: unknown[]): string => {
+          if (!Array.isArray(parts)) return "";
+          for (const part of parts) {
+            if (!part || typeof part !== "object") continue;
+            const p = part as Record<string, unknown>;
+            const content = p.content;
+            if (Array.isArray(content)) {
+              for (const c of content) {
+                if (c && typeof c === "object") {
+                  const cc = c as Record<string, unknown>;
+                  if (cc.type === "text" && typeof cc.text === "string") {
+                    return cc.text;
+                  }
+                }
+              }
+            }
           }
+          return "";
+        };
 
-          const dataStr = line.slice(5).trim();
-          if (dataStr === "[DONE]" || !dataStr) {
-            return;
+        const processLine = (line: string) => {
+          if (!line || !line.trim()) return;
+
+          let dataStr = line.trim();
+          // ChatGLM SSE: "data: {...}" lines
+          if (dataStr.startsWith("data:")) {
+            dataStr = dataStr.slice(5).trim();
           }
+          if (!dataStr) return;
 
           try {
             const data = JSON.parse(dataStr);
 
-            // Extract conversation ID
+            // ChatGLM returns conversation_id in response
             if (data.conversation_id) {
               conversationMap.set(sessionKey, data.conversation_id);
             }
 
-            // Extract content delta
-            const delta = data.text || data.content || data.delta;
-            if (typeof delta === "string" && delta) {
-              if (contentParts.length === 0) {
-                contentParts[contentIndex] = { type: "text", text: "" };
+            // Check for error status
+            if (data.status === "error" || data.last_error?.message) {
+              const errMsg = data.last_error?.message || data.message || "Unknown error";
+              console.log(`[ZWebStream] API error: ${errMsg}`);
+              return;
+            }
+
+            // Skip status "init" - means still processing
+            if (data.status === "init") {
+              return;
+            }
+
+            // Extract text from parts - the new format has parts[].content[]
+            let delta = "";
+            if (data.parts && Array.isArray(data.parts)) {
+              delta = extractTextFromParts(data.parts);
+            }
+
+            // Fallback to legacy format
+            if (!delta) {
+              delta = data.text || "";
+            }
+
+            if (delta && delta !== lastExtractedText) {
+              // Calculate the incremental part (each SSE has full accumulated text)
+              const newDelta = delta.substring(lastExtractedText.length);
+              lastExtractedText = delta;
+
+              if (newDelta) {
+                if (contentParts.length === 0) {
+                  contentParts[contentIndex] = { type: "text", text: "" };
+                  stream.push({ type: "text_start", contentIndex, partial: createPartial() });
+                }
+
+                const actualDelta = newDelta;
+                contentParts[contentIndex].text += actualDelta;
+                accumulatedContent += actualDelta;
+
                 stream.push({
-                  type: "text_start",
+                  type: "text_delta",
                   contentIndex,
+                  delta: actualDelta,
                   partial: createPartial(),
                 });
               }
-
-              contentParts[contentIndex].text += delta;
-              accumulatedContent += delta;
-
-              stream.push({
-                type: "text_delta",
-                contentIndex,
-                delta,
-                partial: createPartial(),
-              });
             }
           } catch {
             // Ignore parse errors
