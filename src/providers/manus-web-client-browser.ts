@@ -207,6 +207,12 @@ export class ManusWebClientBrowser {
           "免费计划",
           "开始免费试用",
           "项目新项目所有任务",
+          "思考过程", // Manus thinking process header
+          "任务完成时收到通知",
+          "下载 Manus 应用",
+          "Manus 解答您的问题效果如何",
+          "创建",
+          "开启 Agent",
         ];
         const isGreeting = (t: string) =>
           t.length < 15 && (/^你好$/i.test(t) || /^hi$/i.test(t) || /^您好$/i.test(t));
@@ -220,6 +226,46 @@ export class ManusWebClientBrowser {
         const inputCard = inputEl?.closest('[class*="rounded"]') ?? inputEl?.parentElement?.parentElement;
         const inputRoot = inputCard ?? inputEl?.parentElement ?? inputEl;
         const notInInputArea = (el: Element) => !inputRoot?.contains(el);
+
+        // 改进：直接获取页面文本，过滤掉 UI 元素后提取最新回复
+        // Manus 回复格式: "思考过程" + 实际回复内容
+        const fullText = document.body.innerText || '';
+        const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        // 跳过 UI 文本行，获取最新的助理回复
+        const uiPatterns = [
+          '新建任务', '所有任务', '项目', '库', '搜索', 'Ctrl', 'K',
+          '开始免费试用', '免费计划', '分享', '积分',
+          '我能为你做什么', '将您的工具连接到 Manus',
+          '制作幻灯片', '创建网站', '开发应用', '设计', '更多',
+          'Conversation Info', 'Lite', 'Manus', '效果如何',
+          '下载 Manus', '任务完成时', '开启 Agent', '创建',
+        ];
+
+        // 倒序查找最近的助理回复（用户输入之后的第一条）
+        let foundUserInput = false;
+        let extractedText = '';
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i];
+          const isUI = uiPatterns.some(p => line.includes(p));
+
+          if (line.includes('say hello') || line.includes('test')) {
+            foundUserInput = true;
+            continue;
+          }
+
+          if (foundUserInput && !isUI && line.length > 5 && line.length < 3000) {
+            extractedText = line;
+            break;
+          }
+        }
+
+        // 如果提取成功，直接返回
+        if (extractedText && extractedText.length > 5) {
+          const stopBtn = document.querySelector('[aria-label*="Stop"], [aria-label*="stop"]');
+          const isStreaming = !!stopBtn;
+          return { text: extractedText, isStreaming };
+        }
 
         // 优先使用消息区：输入框卡片的 previousSibling（上方）或父容器内排除输入卡后的区域
         const messagesArea =
