@@ -104,12 +104,18 @@ See **START_HERE.md**, **INSTALLATION.md**, and **TEST_STEPS.md** for details.
 │                           │  (PI-AI Engine) │                               │
 │                           └────────┬────────┘                               │
 │                                    │                                         │
-│  ┌─────────────────────────────────┼─────────────────────────────────────┐  │
-│  │                          Provider Layer                               │  │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │  │
-│  │  │ DeepSeek Web │  │  Doubao Web  │  │   OpenAI     │  │ Anthropic   │  │  │
-│  │  │ (Zero Token) │  │ (Zero Token) │  │   (Token)    │  │  (Token)    │  │  │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │  Provider Layer                                                       │  │
+│  │  DeepSeek Web (Zero Token)                                       ✅   │  │
+│  │  Qwen Web Int'l/CN (Zero Token)                                  ✅   │  │
+│  │  Kimi (Zero Token)                                               ✅   │  │
+│  │  Claude Web (Zero Token)                                         ✅   │  │
+│  │  Doubao (Zero Token)                                             ✅   │  │
+│  │  ChatGPT Web (Zero Token)                                        ✅   │  │
+│  │  Gemini Web (Zero Token)                                         ✅   │  │
+│  │  Grok Web (Zero Token)                                           ✅   │  │
+│  │  GLM Web (Zero Token)                                            ✅   │  │
+│  │  Manus API (Token)                                               ✅   │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
