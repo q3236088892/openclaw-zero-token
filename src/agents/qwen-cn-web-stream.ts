@@ -414,7 +414,23 @@ export function createQwenCNWebStreamFn(cookieOrJson: string): StreamFn {
         };
 
         let hasExtractedContent = false;
-        let lastExtractedContent = '';
+        let emittedText = "";
+        const dedupeDelta = (delta: string): string => {
+          if (!delta) return "";
+          if (emittedText && delta.startsWith(emittedText)) {
+            return delta.slice(emittedText.length);
+          }
+          if (emittedText && emittedText.startsWith(delta)) {
+            return "";
+          }
+          const maxOverlap = Math.min(emittedText.length, delta.length);
+          for (let i = maxOverlap; i > 0; i--) {
+            if (emittedText.endsWith(delta.slice(0, i))) {
+              return delta.slice(i);
+            }
+          }
+          return delta;
+        };
         const processLine = (line: string) => {
           if (!line) {
             return;
@@ -508,12 +524,12 @@ export function createQwenCNWebStreamFn(cookieOrJson: string): StreamFn {
             }
             console.log(`[QwenCNWebStream] Delta extracted: ${typeof delta}, value="${delta}"`);
             if (typeof delta === "string" && delta) {
-              // Avoid duplicate content from multiple SSE events
-              if (delta !== lastExtractedContent) {
-                lastExtractedContent = delta;
-                pushDelta(delta);
+              const toEmit = dedupeDelta(delta);
+              if (toEmit) {
+                emittedText += toEmit;
+                pushDelta(toEmit);
               } else {
-                console.log(`[QwenCNWebStream] Skipping duplicate content`);
+                console.log(`[QwenCNWebStream] Skipping duplicate or overlapping content`);
               }
             }
           } catch {

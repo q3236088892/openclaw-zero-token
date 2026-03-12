@@ -50,6 +50,16 @@ port_pid() {
 }
 
 # 打开浏览器（跨平台）
+
+# List all openclaw-gateway PIDs (best-effort, cross-platform)
+list_gateway_pids() {
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -f 'openclaw-gateway' 2>/dev/null
+    return
+  fi
+  ps -eo pid,comm,args 2>/dev/null | awk '/openclaw-gateway/ && $0 !~ /awk/ {print $1}'
+}
+
 open_browser() {
   local url=$1
   case "$OS" in
@@ -127,6 +137,19 @@ stop_gateway() {
     kill "$PORT_PID" 2>/dev/null
     sleep 1
   fi
+
+  # Extra safety: kill any remaining openclaw-gateway processes
+  for pid in $(list_gateway_pids | sort -u); do
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      echo "停止 openclaw-gateway (PID: $pid)..."
+      kill "$pid" 2>/dev/null
+      sleep 1
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null
+      fi
+    fi
+  done
+
 }
 
 start_gateway() {
@@ -173,8 +196,12 @@ start_gateway() {
     echo "Gateway 服务已启动 (PID: $GATEWAY_PID)"
     echo "Web UI: $WEBUI_URL"
     if [ "$WEBUI_READY" -eq 1 ]; then
-      echo "正在打开浏览器..."
-      open_browser "$WEBUI_URL"
+      if [ "${OPENCLAW_NO_BROWSER:-}" = "1" ]; then
+        echo "已禁用自动打开浏览器（OPENCLAW_NO_BROWSER=1），请手动在浏览器中打开上述地址"
+      else
+        echo "正在打开浏览器..."
+        open_browser "$WEBUI_URL"
+      fi
     else
       echo "请手动在浏览器中打开上述地址"
     fi

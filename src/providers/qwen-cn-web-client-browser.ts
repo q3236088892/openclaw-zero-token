@@ -34,6 +34,25 @@ export class QwenCNWebClientBrowser {
   private page: Page | null = null;
   private running: RunningChrome | null = null;
 
+  private static extractXsrfToken(cookie: string): string {
+    if (!cookie) {
+      return "";
+    }
+    const matches = [...cookie.matchAll(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/gi)];
+    if (matches.length === 0) {
+      return "";
+    }
+    return matches[matches.length - 1]?.[1] ?? "";
+  }
+
+  private static hasCookieName(cookie: string, name: string): boolean {
+    if (!cookie) {
+      return false;
+    }
+    const pattern = new RegExp(`(?:^|;\\s*)${name}=`, "i");
+    return pattern.test(cookie);
+  }
+
   constructor(options: QwenCNWebClientOptions | string) {
     let finalOptions: QwenCNWebClientOptions;
     if (typeof options === "string") {
@@ -58,6 +77,9 @@ export class QwenCNWebClientBrowser {
       if (match) {
         this.ut = match[1];
       }
+    }
+    if (!this.xsrfToken && this.cookie) {
+      this.xsrfToken = QwenCNWebClientBrowser.extractXsrfToken(this.cookie);
     }
     this.deviceId =
       finalOptions.deviceId || this.ut || "random-" + Math.random().toString(36).slice(2);
@@ -175,6 +197,36 @@ export class QwenCNWebClientBrowser {
     signal?: AbortSignal;
   }): Promise<ReadableStream<Uint8Array>> {
     const { page } = await this.ensureBrowser();
+    if (!this.xsrfToken && this.cookie) {
+      this.xsrfToken = QwenCNWebClientBrowser.extractXsrfToken(this.cookie);
+    }
+    if (!this.xsrfToken || !this.ut) {
+      const reasons: string[] = [];
+      if (!this.cookie) {
+        reasons.push("cookie is empty");
+      }
+      const hasBUserId = QwenCNWebClientBrowser.hasCookieName(this.cookie, "b-user-id");
+      const hasXsrfCookie = QwenCNWebClientBrowser.hasCookieName(this.cookie, "XSRF-TOKEN");
+      if (!this.ut) {
+        if (!hasBUserId) {
+          reasons.push("cookie is missing b-user-id, so ut cannot be derived");
+        } else {
+          reasons.push("ut is empty even though b-user-id exists in cookie");
+        }
+      }
+      if (!this.xsrfToken) {
+        if (!hasXsrfCookie) {
+          reasons.push("cookie is missing XSRF-TOKEN and no xsrfToken was provided");
+        } else {
+          reasons.push("xsrfToken is empty even though XSRF-TOKEN exists in cookie");
+        }
+      }
+      const reasonText = reasons.length > 0 ? reasons.join("; ") : "missing required fields";
+      throw new Error(
+        `Qwen CN credentials incomplete: ${reasonText}. ` +
+        `Please re-run onboarding and capture Cookie + x-xsrf-token from a /api/v2/chat request on qianwen.com.`
+      );
+    }
 
     const model = params.model || "Qwen3.5-Plus";
     const sessionId = params.sessionId || Array.from({ length: 32 }, () =>
@@ -221,6 +273,7 @@ export class QwenCNWebClientBrowser {
 
           const res = await fetch(url, {
             method: "POST",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
               "Accept": "text/event-stream, text/plain, */*",
